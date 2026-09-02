@@ -3,15 +3,15 @@ The most advanced open source Discord Selfbot.
 Ghost has 150+ commands and a completely custom built GUI for endless customisation!  
 
 # Things im planning to fix/add
-- Add a toggle for starting on windows boot
-- Adding ability to search commands
-- Adding notifications when a guild is left or friends unadd you etc.
-- Add abilty to edit the homescreen to add sniper to it
-- Webhook message sender MAYBE
-- Make the sniping log look better
-- Create a backups page
+- Add a toggle for starting on windows boot[x]
+- Adding ability to search commands(SCRAPPED)
+- Adding notifications when a guild is left or friends unadd you etc.[x]
+- Add abilty to edit the homescreen to add sniper to it[x]
+- Webhook message sender MAYBE(SCRAPPED)
+- Make the sniping log look better(~)
+- Create a backups page[x]
 - Multi-account support
-- A built in text editor for custom scripts
+- A built in text editor for custom scripts[x]
 
 > [!WARNING]  
 > Using Ghost is against Discord's TOS and <ins>can</ins> result in account termination! To avoid termination, do not use any commands in bigger servers especially ones moderated by Discord staff and do not use any of the abuse commands. I do not take any responsibility for the actions that may be caused by using Ghost. Please use with caution!
