@@ -48,6 +48,8 @@ DEFAULT_CONFIG = {
     "gui_theme": "dark",
     "telemetry": True,
     "install_id": "",
+    "launch_on_startup": False,
+    "multi_tokens": [],
 }
 
 DEFAULT_THEME = {

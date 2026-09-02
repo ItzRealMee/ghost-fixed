@@ -15,6 +15,7 @@ class Titlebar:
         self._offset_x = 0
         self._offset_y = 0
         self._dragging = False
+        self._move_in_progress = False
 
     def _on_press(self, event):
         self._dragging = True
@@ -22,15 +23,24 @@ class Titlebar:
         self._offset_y = event.y_root - self.root.winfo_y()
 
     def _on_motion(self, event):
-        if not self._dragging:
-            return
+        if not self._dragging or self._move_in_progress:
+            return "break"
 
-        if sys.platform == "darwin":
-            x = event.x_root - self._offset_x
-            y = event.y_root - self._offset_y
-            self.root.geometry(f"+{x}+{y}")
-        elif sys.platform == "win32":
-            hPyT.window_frame.move(self.root, event.x_root - self._offset_x, event.y_root - self._offset_y)
+        target_x = event.x_root - self._offset_x
+        target_y = event.y_root - self._offset_y
+
+        self.root.after(1, lambda x=target_x, y=target_y: self._do_move(x, y))
+        return "break"
+
+    def _do_move(self, x, y):
+        self._move_in_progress = True
+        try:
+            if sys.platform == "darwin":
+                self.root.geometry(f"+{x}+{y}")
+            elif sys.platform == "win32":
+                hPyT.window_frame.move(self.root, x, y)
+        finally:
+            self._move_in_progress = False
 
     def _on_release(self, event):
         self._dragging = False
@@ -91,6 +101,7 @@ class Titlebar:
         )
 
         inner_wrapper = RoundedFrame(titlebar, background=Style.WINDOW_BORDER.value, radius=0)
+
         padx = 8
         pady = 8
 

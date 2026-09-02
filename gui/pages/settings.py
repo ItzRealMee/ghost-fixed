@@ -31,7 +31,12 @@ class SettingsPage:
     def refresh_config(self):
         if not self.parent:
             return
-        
+        try:
+            if not self.parent.winfo_exists():
+                return
+        except Exception:
+            return
+
         try:
             for widget in self.parent.winfo_children():
                 widget.destroy()
@@ -40,8 +45,8 @@ class SettingsPage:
             self.draw(self.parent)
             if self.parent:
                 self.root.after_idle(lambda: self.root.focus_force())
-        except Exception as e:
-            print(f"Error refreshing config: {e}")
+        except Exception:
+            pass
     
     def _create_sections(self, wrapper):
         general_wrapper = ttk.Frame(wrapper)

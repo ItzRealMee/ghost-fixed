@@ -6,6 +6,8 @@ from gui.pages.tools.surveillance_page import SurveillancePage
 from gui.pages.tools.message_logger_page import MessageLoggerPage
 from gui.pages.tools.user_lookup_page import UserLookupPage
 from gui.pages.tools.password_gen import PasswordGenPage
+from gui.pages.tools.backups_page import BackupsPage
+from gui.pages.tools.multi_token_page import MultiTokenPage
 from gui.helpers.style import Style
 
 class ToolsPage:
@@ -21,11 +23,13 @@ class ToolsPage:
         self.message_logger_page = MessageLoggerPage(self, root, bot_controller, images, layout)
         self.user_lookup_page = UserLookupPage(self, root, bot_controller, images, layout)
         self.password_gen_page = PasswordGenPage(self, root, bot_controller, images, layout)
+        self.backups_page = BackupsPage(self, root, bot_controller, images, layout)
+        self.multi_token_page = MultiTokenPage(self, root, bot_controller, images, layout)
         
         self.pages = [
             {
                 "name": "Surveillance",
-                "description": "Search a user’s message history across mutual servers",
+                "description": "Search a user's message history across mutual servers",
                 "page": self.surveillance_page,
                 "command": self.draw_surveillance
             },
@@ -40,7 +44,19 @@ class ToolsPage:
                 "description": "Generate strong, random passwords with customizable options",
                 "page": self.password_gen_page,
                 "command": self.draw_password_gen
-            }
+            },
+            {
+                "name": "Backups",
+                "description": "Create and restore backups of your Ghost configuration and data",
+                "page": self.backups_page,
+                "command": self.draw_backups
+            },
+            {
+                "name": "Multi-Token",
+                "description": "Run multiple selfbot accounts simultaneously",
+                "page": self.multi_token_page,
+                "command": self.draw_multi_token
+            },
             # {
             #     "name": "User Lookup",
             #     "description": "Look up information about a user by their ID",
@@ -79,6 +95,22 @@ class ToolsPage:
         main = self.layout.main()
         self.user_lookup_page.draw(main)
         self.layout.sidebar.set_button_command("tools", self.draw_user_lookup)
+        self.position_resize_grips()
+
+    def draw_backups(self):
+        self.layout.sidebar.set_current_page("tools")
+        self.layout.clear()
+        main = self.layout.main()
+        self.backups_page.draw(main)
+        self.layout.sidebar.set_button_command("tools", self.draw_backups)
+        self.position_resize_grips()
+
+    def draw_multi_token(self):
+        self.layout.sidebar.set_current_page("tools")
+        self.layout.clear()
+        main = self.layout.main()
+        self.multi_token_page.draw(main)
+        self.layout.sidebar.set_button_command("tools", self.draw_multi_token)
         self.position_resize_grips()
         
     def _bind_hover_effects(self, widget, targets, hover_bg, normal_bg):

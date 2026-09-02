@@ -3,6 +3,7 @@ import ttkbootstrap as ttk
 import tkinter.font as tkFont
 from ttkbootstrap.scrolled import ScrolledFrame
 from gui.components import RoundedFrame, RoundedButton
+from gui.components.notification_feed import NotificationFeed
 from gui.helpers import Images
 from gui.helpers.style import Style, get_current_theme_str
 from utils.config import VERSION, CHANGELOG, MOTD, Config
@@ -20,7 +21,7 @@ class HomePage:
         self.avatars = {}
         self.images = Images()
         self.cfg = Config()
-                
+        
         self.details_wrapper = None
         self.friends_label = None
         self.guilds_label = None
@@ -30,6 +31,9 @@ class HomePage:
         self.restart_title = None
         self.restart_title_elipsis = "..."
         self.restart_title_text = "Ghost is restarting"
+
+        self.notification_feed = NotificationFeed(root)
+        self._notification_feed_widget = None
         
         self.root.bind("<Configure>", self._update_wraplength)
         
@@ -38,31 +42,34 @@ class HomePage:
             widget.destroy()
         
     def _update_restart_title(self):
-        if self.restart:
-            if len(self.restart_title_elipsis) == 3:
-                self.restart_title_elipsis = "."
-            else:
-                self.restart_title_elipsis += "."
-            self.restart_title.config(text=f"{self.restart_title_text}{self.restart_title_elipsis}")
-        self.root.after(750, self._update_restart_title)
+        try:
+            if self.restart:
+                if len(self.restart_title_elipsis) == 3:
+                    self.restart_title_elipsis = "."
+                else:
+                    self.restart_title_elipsis += "."
+                self.restart_title.config(text=f"{self.restart_title_text}{self.restart_title_elipsis}")
+            self.restart_title.after(750, self._update_restart_title)
+        except Exception:
+            pass
         
     def _update_account_details(self):
         try:
             if not self.restart:
                 self.friends_label.config(text=f"Friends: {len(self.bot_controller.get_friends())}")
                 self.guilds_label.config(text=f"Guilds: {len(self.bot_controller.get_guilds())}")
-        except:
+            self.friends_label.after(1000, self._update_account_details)
+        except Exception:
             pass
-        self.root.after(1000, self._update_account_details)
-        
+
     def _update_bot_details(self):
         try:
             if not self.restart:
                 self.uptime_label.config(text=f"Uptime: {self.bot_controller.get_uptime()}")
                 self.latency_label.config(text=f"Latency: {self.bot_controller.get_latency()}")
-        except:
+            self.uptime_label.after(1000, self._update_bot_details)
+        except Exception:
             pass
-        self.root.after(1000, self._update_bot_details)
         
     def _draw_restart_button(self, parent, disabled=False):
         def _hover_enter(_):
@@ -207,7 +214,6 @@ class HomePage:
         wrapper.grid_columnconfigure(1, weight=1)
         
     def _update_wraplength(self, event=None):
-        # This method can be used for future wraplength updates if needed
         pass
             
     def draw(self, parent, restart=False, start=False):
@@ -218,11 +224,89 @@ class HomePage:
         
         self._draw_details(parent)
         
-        # self.details_wrapper = self._draw_details_wrapper(parent)
-        # self._draw_account_details(self.details_wrapper)
-        # self._draw_bot_details(self.details_wrapper)
-        
         self._update_bot_details()
-        # self._update_account_details()
-        
-        self.console.draw(parent)
+
+        if not self.restart:
+            self._notification_feed_widget = self.notification_feed.draw(parent)
+            self._notification_feed_widget.pack(fill=ttk.BOTH, expand=True)
+
+            self.console.draw(parent)
+            self._setup_event_hooks()
+        else:
+            self.console.draw(parent)
+
+    def _setup_event_hooks(self):
+        if not self.bot_controller.bot:
+            return
+        try:
+            self.bot_controller.bot.add_listener(self._on_relationship_add, 'on_relationship_add')
+            self.bot_controller.bot.add_listener(self._on_relationship_remove, 'on_relationship_remove')
+            self.bot_controller.bot.add_listener(self._on_relationship_update, 'on_relationship_update')
+            self.bot_controller.bot.add_listener(self._on_guild_remove, 'on_guild_remove')
+            self.bot_controller.bot.add_listener(self._on_guild_join, 'on_guild_join')
+        except Exception:
+            pass
+
+    async def _on_relationship_add(self, relationship):
+        try:
+            user_name = getattr(relationship, 'user', relationship).name if hasattr(relationship, 'user') else str(relationship)
+            self._add_notification(
+                "friend_add",
+                f"New {getattr(relationship, 'type', 'friend').name.replace('_', ' ').title() if hasattr(relationship, 'type') else 'friend'}",
+                f"{user_name} has been added to your relationships."
+            )
+        except Exception:
+            pass
+
+    async def _on_relationship_remove(self, relationship):
+        try:
+            user_name = getattr(relationship, 'user', relationship).name if hasattr(relationship, 'user') else str(relationship)
+            self._add_notification(
+                "friend_remove",
+                f"Removed {getattr(relationship, 'type', 'friend').name.replace('_', ' ').title() if hasattr(relationship, 'type') else 'friend'}",
+                f"{user_name} has been removed from your relationships."
+            )
+        except Exception:
+            pass
+
+    async def _on_relationship_update(self, before, after):
+        try:
+            user_name = getattr(after, 'user', after).name if hasattr(after, 'user') else str(after)
+            self._add_notification(
+                "relationship_update",
+                "Relationship Updated",
+                f"Relationship with {user_name} has been updated."
+            )
+        except Exception:
+            pass
+
+    async def _on_guild_remove(self, guild):
+        try:
+            self._add_notification(
+                "guild_remove",
+                "Removed from Server",
+                f"You were removed from {guild.name}."
+            )
+        except Exception:
+            pass
+
+    async def _on_guild_join(self, guild):
+        try:
+            self._add_notification(
+                "guild_join",
+                "Joined Server",
+                f"You joined {guild.name}."
+            )
+        except Exception:
+            pass
+
+    def _add_notification(self, event_type, title, description="", color=None):
+        import time as _time
+        timestamp = _time.strftime("%H:%M:%S")
+        try:
+            if self.notification_feed.scroll_frame and self.notification_feed.scroll_frame.winfo_exists():
+                self.root.after(0, lambda: self.notification_feed.add_notification(
+                    event_type, title, description, timestamp=timestamp, color=color
+                ))
+        except Exception:
+            pass

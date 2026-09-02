@@ -357,6 +357,8 @@ class SurveillancePage(ToolPage):
         return header
 
     def update(self):
+        if self.textarea is None:
+            return
         try:
             self.textarea.delete("1.0", "end")
             
@@ -367,14 +369,14 @@ class SurveillancePage(ToolPage):
             
             self.textarea.yview_moveto(1)
         except:
-            print("Surveillance console tried to update without being drawn.")
-            
+            pass
+
     def clear(self):
         self.console = []
         try:
             self.textarea.delete("1.0", "end")
         except:
-            print("Surveillance console tried to clear without being drawn.")
+            pass
 
     def add_log(self, prefix, text):
         time = get_formatted_time()

@@ -6,6 +6,8 @@ from gui.helpers.style import Style
 from utils.console import get_formatted_time
 
 class Console:
+    MAX_LOG_ENTRIES = 500
+
     def __init__(self, root, bot_controller):
         self.root = root
         self.bot = bot_controller
@@ -18,25 +20,34 @@ class Console:
         self.non_darwin_font_size = 12
         
     def update(self):
+        if self.textarea is None:
+            return
         try:
             self.textarea.delete("1.0", "end")
             
-            for time, prefix, text in self.console:
+            visible = self.console[-self.MAX_LOG_ENTRIES:] if len(self.console) > self.MAX_LOG_ENTRIES else self.console
+
+            for time, prefix, text in visible:
                 if prefix.lower() == "sniper":
                     content = text
-                    type = content.get("type")
+                    type_name = content.get("type")
                     title = content.get("title")
                     description = content.get("description")
+                    success = content.get("success", True)
                     
-                    self.textarea.insert("end", f"\n[{time}] ", "timestamp")
-                    self.textarea.insert("end", f"[{type.upper()}] ", f"prefix_{prefix.lower()}")
+                    self.textarea.insert("end", "\n", "log_text")
+                    self.textarea.insert("end", f"  {time} ", "timestamp")
+                    
+                    if success:
+                        self.textarea.insert("end", f" {type_name.upper()} ", "prefix_sniper_success")
+                    else:
+                        self.textarea.insert("end", f" {type_name.upper()} ", "prefix_sniper_fail")
+                    
                     self.textarea.insert("end", f"{title}\n", "log_text")
                     
                     for key, value in description.items():
-                        self.textarea.insert("end", f"{' ' * len(f'[{time}] ')}{key}: ", "sniper_key")
+                        self.textarea.insert("end", f"         {key}: ", "sniper_key")
                         self.textarea.insert("end", f"{value}\n", "log_text")
-                        
-                    self.textarea.insert("end", "\n", "log_text")
                 else:
                     self.textarea.insert("end", f"[{time}] ", "timestamp")
                     self.textarea.insert("end", f"[{prefix}] ", f"prefix_{prefix.lower()}")
@@ -44,17 +55,37 @@ class Console:
             
             self.textarea.yview_moveto(1)
         except:
-            print("Console tried to update without being drawn.")
+            pass
             
     def clear(self):
         self.console = []
         try:
             self.textarea.delete("1.0", "end")
         except:
-            print("Console tried to clear without being drawn.")
+            pass
     
     def add_sniper(self, sniper_obj):
         self.add_log("sniper", sniper_obj)
+        self._notify_home_feed(sniper_obj)
+    
+    def _notify_home_feed(self, sniper_obj):
+        try:
+            from gui.pages.home import HomePage
+            gui = self.bot.gui if hasattr(self.bot, 'gui') else None
+            if gui and hasattr(gui, 'home_page'):
+                event_type = sniper_obj.get("type", "sniper")
+                title = sniper_obj.get("title", "Sniper Event")
+                desc_parts = sniper_obj.get("description", {})
+                description = "\n".join(f"{k}: {v}" for k, v in desc_parts.items())
+                success = "success" not in title.lower() or "failed" not in title.lower()
+                gui.home_page._add_notification(
+                    f"{event_type.lower()}_snipe",
+                    title,
+                    description,
+                    color="#4fee4c" if success else "#ff6464"
+                )
+        except Exception:
+            pass
     
     def add_log(self, prefix, text):
         time = get_formatted_time()
@@ -62,20 +93,25 @@ class Console:
         self.update()
         
     def _load_tags(self):
-        self.textarea.tag_config("timestamp", foreground=Style.DARK_GREY.value, font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("log_text",  foreground=Style.LIGHT_GREY.value, font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
+        font_size = self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size
+        mono_font = ("JetBrainsMono NF", font_size, "bold")
         
-        self.textarea.tag_config("prefix_sniper",  foreground="red",     font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("sniper_key",     foreground="#eceb18", font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_command", foreground="#0b91ff", font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_info",    foreground="#2aefef", font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_success", foreground="#4fee4c", font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_warning", foreground="#eceb18", font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_error",   foreground="red",     font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_cli",     foreground="pink",    font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_rpc",     foreground="pink",    font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_captcha", foreground="#eceb18", font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
-        self.textarea.tag_config("prefix_nitro",   foreground="#0b91ff", font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold"))
+        self.textarea.tag_config("timestamp", foreground=Style.DARK_GREY.value, font=mono_font)
+        self.textarea.tag_config("log_text",  foreground=Style.LIGHT_GREY.value, font=mono_font)
+        
+        self.textarea.tag_config("prefix_sniper",        foreground="red",     font=mono_font)
+        self.textarea.tag_config("prefix_sniper_success", foreground="#4fee4c", font=mono_font)
+        self.textarea.tag_config("prefix_sniper_fail",   foreground="#ff6464", font=mono_font)
+        self.textarea.tag_config("sniper_key",           foreground="#eceb18", font=mono_font)
+        self.textarea.tag_config("prefix_command",       foreground="#0b91ff", font=mono_font)
+        self.textarea.tag_config("prefix_info",          foreground="#2aefef", font=mono_font)
+        self.textarea.tag_config("prefix_success",       foreground="#4fee4c", font=mono_font)
+        self.textarea.tag_config("prefix_warning",       foreground="#eceb18", font=mono_font)
+        self.textarea.tag_config("prefix_error",         foreground="red",     font=mono_font)
+        self.textarea.tag_config("prefix_cli",           foreground="pink",    font=mono_font)
+        self.textarea.tag_config("prefix_rpc",           foreground="pink",    font=mono_font)
+        self.textarea.tag_config("prefix_captcha",       foreground="#eceb18", font=mono_font)
+        self.textarea.tag_config("prefix_nitro",         foreground="#0b91ff", font=mono_font)
     
     def _draw_footer(self, parent):
         """ Draw the footer with user info and clear button. """
