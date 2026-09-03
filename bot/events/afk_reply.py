@@ -18,6 +18,9 @@ class AFKReply(commands.Cog):
     async def handle_afk_message(self, message: discord.Message):
         afk_cfg = self.cfg.get("afk") if self.cfg.get("afk") else {"afk_response": "I'm away from the keyboard right now, I'll get back to you as soon as I can.", "afk_times": [8, 18], "enabled": False}
         
+        if not afk_cfg["enabled"]:
+            return
+        
         current_hour = datetime.datetime.now().hour
         afk_times = afk_cfg["afk_times"]
         afk_response = afk_cfg["afk_response"]
