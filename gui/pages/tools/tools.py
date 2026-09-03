@@ -6,6 +6,7 @@ from gui.pages.tools.surveillance_page import SurveillancePage
 from gui.pages.tools.message_logger_page import MessageLoggerPage
 from gui.pages.tools.user_lookup_page import UserLookupPage
 from gui.pages.tools.password_gen import PasswordGenPage
+from gui.pages.tools.auto_afk_reply_page import AutoAFKReplyPage
 from gui.helpers.style import Style
 
 class ToolsPage:
@@ -21,6 +22,7 @@ class ToolsPage:
         self.message_logger_page = MessageLoggerPage(self, root, bot_controller, images, layout)
         self.user_lookup_page = UserLookupPage(self, root, bot_controller, images, layout)
         self.password_gen_page = PasswordGenPage(self, root, bot_controller, images, layout)
+        self.auto_afk_reply_page = AutoAFKReplyPage(self, root, bot_controller, images, layout)
         
         self.pages = [
             {
@@ -40,6 +42,12 @@ class ToolsPage:
                 "description": "Generate strong, random passwords with customizable options",
                 "page": self.password_gen_page,
                 "command": self.draw_password_gen
+            },
+            {
+                "name": "Auto AFK Reply",
+                "description": "Automatically reply to DMs when you're away from the keyboard",
+                "page": self.auto_afk_reply_page,
+                "command": self.draw_auto_afk_reply
             }
             # {
             #     "name": "User Lookup",
@@ -79,6 +87,14 @@ class ToolsPage:
         main = self.layout.main()
         self.user_lookup_page.draw(main)
         self.layout.sidebar.set_button_command("tools", self.draw_user_lookup)
+        self.position_resize_grips()
+        
+    def draw_auto_afk_reply(self):
+        self.layout.sidebar.set_current_page("tools")
+        self.layout.clear()
+        main = self.layout.main()
+        self.auto_afk_reply_page.draw(main)
+        self.layout.sidebar.set_button_command("tools", self.draw_auto_afk_reply)
         self.position_resize_grips()
         
     def _bind_hover_effects(self, widget, targets, hover_bg, normal_bg):
