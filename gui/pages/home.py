@@ -34,7 +34,8 @@ class HomePage:
 
         self.notification_feed = NotificationFeed(root)
         self._notification_feed_widget = None
-        
+        self._hooks_installed = False
+
         self.root.bind("<Configure>", self._update_wraplength)
         
     def _clear_everything(self):
@@ -236,6 +237,8 @@ class HomePage:
             self.console.draw(parent)
 
     def _setup_event_hooks(self):
+        if self._hooks_installed:
+            return
         if not self.bot_controller.bot:
             return
         try:
@@ -244,6 +247,7 @@ class HomePage:
             self.bot_controller.bot.add_listener(self._on_relationship_update, 'on_relationship_update')
             self.bot_controller.bot.add_listener(self._on_guild_remove, 'on_guild_remove')
             self.bot_controller.bot.add_listener(self._on_guild_join, 'on_guild_join')
+            self._hooks_installed = True
         except Exception:
             pass
 

@@ -142,6 +142,15 @@ class MultiTokenPage(ToolPage):
         dialog.transient(self.root)
         dialog.grab_set()
 
+        if sys.platform == "win32":
+            try:
+                import hPyT
+                hPyT.title_bar.hide(dialog, no_span=True)
+                hPyT.corner_radius.set(dialog, style="round")
+                hPyT.window_dwm.toggle_dwm_transitions(dialog, enabled=True)
+            except Exception:
+                pass
+
         wrapper = ttk.Frame(dialog, style="dark.TFrame")
         wrapper.pack(fill=ttk.BOTH, expand=True, padx=20, pady=20)
 
@@ -317,32 +326,31 @@ class MultiTokenPage(ToolPage):
         inner.grid_columnconfigure(1, weight=1)
 
     def draw_content(self, wrapper):
-        header = ttk.Frame(wrapper, style="dark.TFrame")
-        header.pack(fill=ttk.X, pady=(0, 10))
+        add_btn_frame = RoundedFrame(wrapper, radius=(10, 10, 10, 10),
+                                     bootstyle="primary.TFrame")
+        add_btn_frame.pack(fill=ttk.X, pady=(0, 10))
 
-        title = ttk.Label(header, text="Multi-Token Manager",
-                          font=("Host Grotesk", 14, "bold"))
-        title.configure(background=self.root.style.colors.get("dark"))
-        title.pack(side=ttk.LEFT)
-
-        add_btn = RoundedFrame(header, radius=(8, 8, 8, 8), bootstyle="primary.TFrame")
-        add_btn.pack(side=ttk.RIGHT)
-
-        add_inner = ttk.Frame(add_btn, style="primary.TFrame")
-        add_inner.pack(padx=12, pady=6)
+        add_inner = ttk.Frame(add_btn_frame, style="primary.TFrame")
+        add_inner.pack(fill=ttk.BOTH, padx=12, pady=8)
 
         add_label = ttk.Label(add_inner, text="+ Add Token",
-                              font=("Host Grotesk", 11, "bold"), cursor="hand2")
+                              font=("Host Grotesk", 12, "bold"),
+                              cursor="hand2")
         add_label.configure(background=self.root.style.colors.get("primary"))
-        add_label.pack()
-        add_btn.bind("<Button-1>", lambda e: self._add_token())
+        add_label.pack(side=ttk.LEFT)
         add_label.bind("<Button-1>", lambda e: self._add_token())
+        add_btn_frame.bind("<Button-1>", lambda e: self._add_token())
 
-        desc = ttk.Label(wrapper, text="Run multiple selfbot accounts simultaneously.",
-                         font=("Host Grotesk", 10))
-        desc.configure(background=self.root.style.colors.get("dark"),
-                       foreground=Style.DARK_GREY.value)
-        desc.pack(anchor=ttk.W, pady=(0, 10))
+        self.status_label = ttk.Label(add_inner, text="",
+                                      font=("Host Grotesk", 10))
+        self.status_label.configure(background=self.root.style.colors.get("primary"),
+                                   foreground="#ffffff")
+        self.status_label.pack(side=ttk.RIGHT)
+
+        tokens_label = ttk.Label(wrapper, text="Active Tokens",
+                                 font=("Host Grotesk", 14, "bold"))
+        tokens_label.configure(background=self.root.style.colors.get("dark"))
+        tokens_label.pack(anchor=ttk.W, pady=(5, 5))
 
         self.list_frame = ScrolledFrame(wrapper, bootstyle="dark.TFrame", autohide=True)
         self.list_frame.container.configure(style="dark.TFrame")

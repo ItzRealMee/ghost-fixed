@@ -172,7 +172,7 @@ class ScriptPage:
 
         if HAS_CUPCAKE:
             self.editor = Editor(
-                editor_wrapper,
+                editor_wrapper.inner_frame,
                 language=Languages.PYTHON,
                 darkmode=True,
                 font=("JetBrainsMono NF Regular", 10 if sys.platform != "darwin" else 12),
@@ -180,13 +180,13 @@ class ScriptPage:
                 showpath=False
             )
             self.editor.pack(fill=ttk.BOTH, expand=True)
-            content = self._get_script_content()
-            self.editor.content.insert("1.0", content)
-            self._original_content = content
+            self.editor.content.configure(state="normal")
+            self._original_content = self.editor.content.get("1.0", "end-1c")
             self.editor.content.bind("<<Modified>>", self._on_content_change)
             self.editor.content.bind("<Key>", lambda e: self.root.after(50, self._on_content_change))
+            self.editor.content.focus_set()
         else:
-            self._draw_fallback_editor(editor_wrapper)
+            self._draw_fallback_editor(editor_wrapper.inner_frame)
 
     def _draw_fallback_editor(self, parent):
         content = self._get_script_content()

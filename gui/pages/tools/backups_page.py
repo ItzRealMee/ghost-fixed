@@ -171,6 +171,8 @@ class BackupsPage(ToolPage):
             self.status_label.configure(text=text)
 
     def _refresh_backup_list(self):
+        for child in self.backup_list_frame.winfo_children():
+            child.destroy()
         for frame_info in self._backup_frames:
             if frame_info["frame"].winfo_exists():
                 frame_info["frame"].destroy()
