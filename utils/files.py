@@ -89,7 +89,9 @@ def _set_startup_windows(enabled):
         if getattr(sys, 'frozen', False):
             exe_path = sys.executable
         else:
-            exe_path = f'"{os.path.abspath(sys.executable)}" "{os.path.abspath("ghost.py")}"'
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            ghost_path = os.path.join(script_dir, "ghost.py")
+            exe_path = f'cmd.exe /c "cd /d "{script_dir}" && python "{ghost_path}"'
 
         app_name = "GhostSelfbot"
 
