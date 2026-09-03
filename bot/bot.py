@@ -201,7 +201,7 @@ class Ghost(commands.Bot):
             ghost_commands.Account, ghost_commands.Fun, ghost_commands.General, ghost_commands.Img,
             ghost_commands.Info, ghost_commands.Mod, ghost_commands.Nsfw, ghost_commands.Text,
             ghost_commands.Theming, ghost_commands.Util, ghost_commands.Abuse, ghost_commands.Sniper,
-            ghost_events.NitroSniper, ghost_events.PrivnoteSniper
+            ghost_events.NitroSniper, ghost_events.PrivnoteSniper, ghost_events.AFKReply
         ]
 
         for cog in cogs:
