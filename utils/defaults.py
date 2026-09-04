@@ -13,6 +13,12 @@ DEFAULT_RPC = {
     "name": "Ghost"
 }
 
+DEFAULT_AFK = {
+    "afk_response": "I'm away from the keyboard right now, I'll get back to you as soon as I can.",
+    "afk_times": [8, 18],
+    "enabled": False
+}
+
 DEFAULT_CONFIG = {
     "token": "",
     "prefix": ".",
@@ -51,6 +57,7 @@ DEFAULT_CONFIG = {
     "launch_on_startup": False,
     "notification_timeout": 5,
     "multi_tokens": [],
+    "afk": DEFAULT_AFK
 }
 
 DEFAULT_THEME = {

@@ -5,3 +5,4 @@ from .user_lookup_page import UserLookupPage
 from .password_gen import PasswordGenPage
 from .backups_page import BackupsPage
 from .multi_token_page import MultiTokenPage
+from .auto_afk_reply_page import AutoAFKReplyPage

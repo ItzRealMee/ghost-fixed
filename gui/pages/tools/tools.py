@@ -9,6 +9,7 @@ from gui.pages.tools.password_gen import PasswordGenPage
 from gui.pages.tools.backups_page import BackupsPage
 from gui.pages.tools.multi_token_page import MultiTokenPage
 from gui.pages.tools.notification_logger_page import NotificationLoggerPage
+from gui.pages.tools.auto_afk_reply_page import AutoAFKReplyPage
 from gui.helpers.style import Style
 
 class ToolsPage:
@@ -27,6 +28,7 @@ class ToolsPage:
         self.backups_page = BackupsPage(self, root, bot_controller, images, layout)
         self.multi_token_page = MultiTokenPage(self, root, bot_controller, images, layout)
         self.notification_logger_page = NotificationLoggerPage(self, root, bot_controller, images, layout)
+        self.auto_afk_reply_page = AutoAFKReplyPage(self, root, bot_controller, images, layout)
         
         self.pages = [
             {
@@ -65,6 +67,11 @@ class ToolsPage:
                 "page": self.notification_logger_page,
                 "command": self.draw_notification_logger
             },
+                "name": "Auto AFK Reply",
+                "description": "Automatically reply to DMs when you're away from the keyboard",
+                "page": self.auto_afk_reply_page,
+                "command": self.draw_auto_afk_reply
+            }
             # {
             #     "name": "User Lookup",
             #     "description": "Look up information about a user by their ID",
@@ -127,6 +134,14 @@ class ToolsPage:
         main = self.layout.main()
         self.notification_logger_page.draw(main)
         self.layout.sidebar.set_button_command("tools", self.draw_notification_logger)
+        self.position_resize_grips()
+        
+    def draw_auto_afk_reply(self):
+        self.layout.sidebar.set_current_page("tools")
+        self.layout.clear()
+        main = self.layout.main()
+        self.auto_afk_reply_page.draw(main)
+        self.layout.sidebar.set_button_command("tools", self.draw_auto_afk_reply)
         self.position_resize_grips()
         
     def _bind_hover_effects(self, widget, targets, hover_bg, normal_bg):
