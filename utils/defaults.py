@@ -49,6 +49,7 @@ DEFAULT_CONFIG = {
     "telemetry": True,
     "install_id": "",
     "launch_on_startup": False,
+    "notification_timeout": 5,
     "multi_tokens": [],
 }
 

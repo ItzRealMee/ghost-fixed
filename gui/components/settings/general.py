@@ -59,6 +59,12 @@ class GeneralPanel(SettingsPanel):
                 console.warning(f"Could not update startup setting: {err}")
         except Exception as e:
             console.error(f"Failed to set startup setting: {e}")
+
+        try:
+            timeout_val = int(self.notif_timeout_entry.value())
+            self.cfg.set("notification_timeout", timeout_val, save=False)
+        except Exception as e:
+            console.error(f"Failed to set notification timeout: {e}")
     
         self.cfg.save(notify=False)
         
@@ -148,6 +154,14 @@ class GeneralPanel(SettingsPanel):
         self.startup_entry = RoundedSwitch(checkboxes_frame, command=self._save_cfg, parent_background=self.root.style.colors.get("dark"))
         self.startup_entry.configure(variable=ttk.BooleanVar(value=self.cfg.get("launch_on_startup")))
         self.startup_entry.grid(row=2, column=1, sticky=ttk.E, padx=(10, 10), pady=(2, 10))
+
+        notif_timeout_label = ttk.Label(self.body, text="Notification timeout (seconds)")
+        notif_timeout_label.configure(background=self.root.style.colors.get("dark"))
+        notif_timeout_label.grid(row=len(self.config_entries) + 4, column=0, sticky=ttk.NW, padx=(10, 0), pady=(5, 10))
+
+        self.notif_timeout_entry = DropdownMenu(self.body, options=["3", "5", "10", "15", "30", "60"], command=lambda _: self._save_cfg())
+        self.notif_timeout_entry.set_selected(str(self.cfg.get("notification_timeout")))
+        self.notif_timeout_entry.draw().grid(row=len(self.config_entries) + 4, column=1, sticky="we", padx=(10, 10), pady=(2, 10), columnspan=3)
 
         return self.wrapper
     

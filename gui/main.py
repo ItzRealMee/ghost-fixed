@@ -86,6 +86,7 @@ class GhostGUI:
         self.settings_page   = SettingsPage(self.root, self.bot_controller, self.draw_settings)
         self.scripts_page    = ScriptsPage(self, self.bot_controller, self.images)
         self.tools_page      = ToolsPage(self.root, self.bot_controller, self.images, self.layout, self._position_resize_grips)
+        self.home_page.notification_feed.set_logger(self.tools_page.notification_logger_page)
         self.update_page     = UpdatePage(self.root, self)
         
         logging.set_gui(self)
@@ -347,6 +348,7 @@ class GhostGUI:
 
         self.root.after(50, lambda: self.notifier.send("Ghost", "Ghost has successfully started!"))
         self.root.after(75, lambda: self.draw_home())
+        self.root.after(200, lambda: self.tools_page.multi_token_page.auto_start_tokens())
 
     def _check_bot_started(self):
         if self.bot_controller.bot_running:

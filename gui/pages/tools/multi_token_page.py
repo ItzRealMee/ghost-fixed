@@ -49,11 +49,14 @@ class TokenInstance:
         from bot.controller import BotController
 
         controller = BotController()
-        controller.cfg.set("token", self.token)
+        controller._is_secondary = True
+        controller.bot_running = False
         controller.loop = self.loop
         controller.running = True
+        self._controller = controller
 
         self.bot = Ghost(controller)
+        controller.bot = self.bot
 
         async def _on_ready():
             self.start_time = time.time()
@@ -82,6 +85,9 @@ class TokenInstance:
 
         async def shutdown():
             try:
+                if hasattr(self.bot, "telemetry_loop") and self.bot.telemetry_loop.is_running():
+                    self.bot.telemetry_loop.cancel()
+                self.bot._stop_rich_presence()
                 await self.bot.close()
             except Exception:
                 pass
@@ -138,18 +144,9 @@ class MultiTokenPage(ToolPage):
         dialog = ttk.Toplevel(self.root)
         dialog.title("Add Token")
         dialog.geometry("450x200")
+        dialog.resizable(False, False)
         dialog.configure(background=self.root.style.colors.get("dark"))
         dialog.transient(self.root)
-        dialog.grab_set()
-
-        if sys.platform == "win32":
-            try:
-                import hPyT
-                hPyT.title_bar.hide(dialog, no_span=True)
-                hPyT.corner_radius.set(dialog, style="round")
-                hPyT.window_dwm.toggle_dwm_transitions(dialog, enabled=True)
-            except Exception:
-                pass
 
         wrapper = ttk.Frame(dialog, style="dark.TFrame")
         wrapper.pack(fill=ttk.BOTH, expand=True, padx=20, pady=20)
@@ -161,7 +158,6 @@ class MultiTokenPage(ToolPage):
 
         name_var = ttk.StringVar(value="Account 1")
         name_entry = ttk.Entry(wrapper, textvariable=name_var, font=("Host Grotesk", 11))
-        name_entry.configure(foreground=self.root.style.colors.get("fg"))
         name_entry.pack(fill=ttk.X, pady=(0, 10))
 
         token_label = ttk.Label(wrapper, text="Token", font=("Host Grotesk", 11))
@@ -171,7 +167,6 @@ class MultiTokenPage(ToolPage):
 
         token_var = ttk.StringVar()
         token_entry = ttk.Entry(wrapper, textvariable=token_var, font=("Host Grotesk", 11), show="*")
-        token_entry.configure(foreground=self.root.style.colors.get("fg"))
         token_entry.pack(fill=ttk.X, pady=(0, 10))
 
         btn_frame = ttk.Frame(wrapper, style="dark.TFrame")
@@ -198,6 +193,8 @@ class MultiTokenPage(ToolPage):
                              background=self.root.style.colors.get("dark"))
         cancel_btn.pack(side=ttk.LEFT)
         cancel_btn.bind("<Button-1>", lambda e: dialog.destroy())
+        cancel_btn.bind("<Enter>", lambda e: cancel_btn.configure(foreground="white"))
+        cancel_btn.bind("<Leave>", lambda e: cancel_btn.configure(foreground=Style.LIGHT_GREY.value))
 
         add_btn = ttk.Label(btn_frame, text="Add", font=("Host Grotesk", 11, "bold"),
                             cursor="hand2")
@@ -205,7 +202,12 @@ class MultiTokenPage(ToolPage):
                           background=self.root.style.colors.get("dark"))
         add_btn.pack(side=ttk.RIGHT)
         add_btn.bind("<Button-1>", lambda e: confirm())
+        add_btn.bind("<Enter>", lambda e: add_btn.configure(foreground="white"))
+        add_btn.bind("<Leave>", lambda e: add_btn.configure(foreground="#4fee4c"))
         token_entry.bind("<Return>", lambda e: confirm())
+
+        dialog.grab_set()
+        name_entry.focus_set()
 
     def _toggle_token(self, index):
         tokens = self._get_tokens()
@@ -227,6 +229,27 @@ class MultiTokenPage(ToolPage):
 
         self._save_tokens(tokens)
         self.root.after(500, self._refresh_list)
+
+    def _toggle_start_on_launch(self, index):
+        tokens = self._get_tokens()
+        if index >= len(tokens):
+            return
+        tokens[index]["start_on_launch"] = not tokens[index].get("start_on_launch", False)
+        self._save_tokens(tokens)
+        self._refresh_list()
+
+    def auto_start_tokens(self):
+        tokens = self._get_tokens()
+        for token_data in tokens:
+            token_data["enabled"] = False
+        self._save_tokens(tokens)
+        for token_data in tokens:
+            if token_data.get("start_on_launch", False):
+                session = TokenInstance(token_data, on_status_change=lambda s: self.root.after(0, self._refresh_list))
+                self.sessions.append(session)
+                session.start()
+                token_data["enabled"] = True
+        self._save_tokens(tokens)
 
     def _remove_token(self, index):
         tokens = self._get_tokens()
@@ -274,6 +297,7 @@ class MultiTokenPage(ToolPage):
         status = session.get_status() if session else "stopped"
         username = session.get_username() if session else token_data.get("name", "Unknown")
         uptime = session.get_uptime() if session else "--"
+        start_on_launch = token_data.get("start_on_launch", False)
 
         card = RoundedFrame(parent, radius=(10, 10, 10, 10), bootstyle="dark.TFrame")
         card.pack(fill=ttk.X, pady=(0, 5))
@@ -303,6 +327,16 @@ class MultiTokenPage(ToolPage):
 
         btn_frame = ttk.Frame(inner, style="dark.TFrame")
         btn_frame.grid(row=0, column=2, rowspan=2, sticky=ttk.E)
+
+        launch_text = "Auto" if start_on_launch else "Manual"
+        launch_color = "#5865f2" if start_on_launch else Style.DARK_GREY.value
+        launch_btn = ttk.Label(btn_frame, text=launch_text, font=("Host Grotesk", 9),
+                               cursor="hand2")
+        launch_btn.configure(foreground=launch_color, background=self.root.style.colors.get("dark"))
+        launch_btn.pack(side=ttk.LEFT, padx=(0, 10))
+        launch_btn.bind("<Button-1>", lambda e, i=index: self._toggle_start_on_launch(i))
+        launch_btn.bind("<Enter>", lambda e: launch_btn.configure(foreground="white"))
+        launch_btn.bind("<Leave>", lambda e, c=launch_color: launch_btn.configure(foreground=c))
 
         toggle_text = "Stop" if status in ("online", "connecting") else "Start"
         toggle_color = "#ff6464" if status in ("online", "connecting") else "#4fee4c"

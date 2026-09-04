@@ -145,6 +145,14 @@ class Ghost(commands.Bot):
     async def on_ready(self):
         try:
             self.start_time = time.time()
+
+            is_secondary = getattr(self.controller, '_is_secondary', False)
+
+            if is_secondary:
+                self.controller.bot_running = True
+                await self.load_cogs()
+                return
+
             self.cfg.add_token(self.cfg.get("token"), self.user.name, self.user.id)
             await self.load_cogs()
 
@@ -168,7 +176,6 @@ class Ghost(commands.Bot):
 
             if self.session_spoofing:
                 console.success(f"Spoofing session as {self.session_spoofing_device}")
-                # console.print_warning("Your account is at higher risk of termination by using session spoofer.")
             
             await self._setup_scripts()
             await self.controller.setup_webhooks()
@@ -176,6 +183,9 @@ class Ghost(commands.Bot):
             
         except Exception as e:
             console.print_error(str(e))
+
+        if is_secondary:
+            return
 
         cfg_rpc = self.cfg.get_rich_presence()
         if cfg_rpc.enabled:

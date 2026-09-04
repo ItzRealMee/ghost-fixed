@@ -138,7 +138,7 @@ class Console:
 
     def _draw_main(self, parent):
         wrapper = RoundedFrame(parent, radius=15, bootstyle="dark.TFrame")
-        wrapper.pack(side="top", fill="both", expand=True)
+        wrapper.pack(fill="both", expand=True)
 
         self.textarea = ttk.Text(wrapper, wrap="word", height=20,
             font=("JetBrainsMono NF", self.non_darwin_font_size if sys.platform != "darwin" else self.darwin_font_size, "bold")
@@ -162,10 +162,12 @@ class Console:
 
         self.textarea.pack(fill="both", expand=True, padx=5, pady=5)
         self._load_tags()
+        self._wrapper = wrapper
 
     def draw(self, parent):
         self.avatar = self.bot.get_avatar(size=15, radius=2)
         self._draw_main(parent)
+        return self._wrapper
         # if self.bot.running:
         #     self._draw_footer(parent)
         self.update()

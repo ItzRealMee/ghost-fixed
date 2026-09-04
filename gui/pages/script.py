@@ -1,18 +1,12 @@
 import sys
 import os
+import tkinter
 import ttkbootstrap as ttk
 from ttkbootstrap.dialogs import Messagebox
 
 from utils.files import get_application_support
 from gui.helpers.images import Images
-from gui.helpers.style import Style, get_current_theme_str
-from gui.components.rounded_frame import RoundedFrame
-
-try:
-    from cupcake import Editor, Languages
-    HAS_CUPCAKE = True
-except ImportError:
-    HAS_CUPCAKE = False
+from gui.helpers.style import Style
 
 
 class ScriptPage:
@@ -21,14 +15,13 @@ class ScriptPage:
         self.root = root.root
         self.script = script
         self.images = Images()
-        self.editor = None
         self.text_widget = None
-        self.linenumbers = None
-        self.text_scrollbar = None
+        self.line_numbers = None
         self._dirty = False
         self._script_path = os.path.join(get_application_support(), "scripts", self.script)
         self._original_content = ""
         self._title_label = None
+        self._status_label = None
 
     def _go_back(self):
         if self._dirty:
@@ -44,16 +37,16 @@ class ScriptPage:
 
     def _get_script_content(self):
         try:
-            with open(self._script_path, "r", encoding="utf-8") as file:
-                return file.read()
+            with open(self._script_path, "r", encoding="utf-8") as f:
+                return f.read()
         except Exception as e:
             return f"# Error reading script: {e}\n"
 
     def _save_script(self):
         try:
-            content = self._get_editor_content()
-            with open(self._script_path, "w", encoding="utf-8") as file:
-                file.write(content)
+            content = self.text_widget.get("1.0", "end-1c") if self.text_widget else ""
+            with open(self._script_path, "w", encoding="utf-8") as f:
+                f.write(content)
             self._original_content = content
             self._dirty = False
             self._update_title()
@@ -70,7 +63,7 @@ class ScriptPage:
             if result != "yes":
                 return
         content = self._get_script_content()
-        self._set_editor_content(content)
+        self._set_content(content)
         self._original_content = content
         self._dirty = False
         self._update_title()
@@ -86,150 +79,128 @@ class ScriptPage:
         self.gui.draw_scripts()
         self.gui.scripts_page._create_script()
 
-    def _get_editor_content(self):
-        if HAS_CUPCAKE and self.editor:
-            return self.editor.content.get("1.0", "end-1c")
-        elif self.text_widget:
-            return self.text_widget.get("1.0", "end-1c")
-        return ""
-
-    def _set_editor_content(self, content):
-        if HAS_CUPCAKE and self.editor:
-            self.editor.content.delete("1.0", "end")
-            self.editor.content.insert("1.0", content)
-        elif self.text_widget:
+    def _set_content(self, content):
+        if self.text_widget:
             self.text_widget.delete("1.0", "end")
             self.text_widget.insert("1.0", content)
+            self._refresh_line_numbers()
 
-    def _on_content_change(self, event=None):
-        content = self._get_editor_content()
+    def _on_change(self, event=None):
+        if not self.text_widget:
+            return
+        try:
+            self.text_widget.edit_modified(False)
+        except Exception:
+            pass
+        content = self.text_widget.get("1.0", "end-1c")
         self._dirty = content != self._original_content
         self._update_title()
+        self.root.after(1, self._refresh_line_numbers)
+
+    def _refresh_line_numbers(self):
+        if not self.line_numbers or not self.text_widget:
+            return
+        try:
+            self.line_numbers.config(state="normal")
+            self.line_numbers.delete("1.0", "end")
+            count = self.text_widget.index("end-1c").split(".")[0]
+            self.line_numbers.insert("1.0", "\n".join(str(i) for i in range(1, int(count) + 1)))
+            self.line_numbers.config(state="disabled")
+        except Exception:
+            pass
+
+    def _sync_scroll(self, *args):
+        if self.line_numbers:
+            self.line_numbers.yview_moveto(args[0])
 
     def _update_title(self):
         if self._title_label:
-            dirty_marker = " *" if self._dirty else ""
-            self._title_label.configure(text=f"{self.script}{dirty_marker}")
+            self._title_label.configure(text=f"{self.script} {'*' if self._dirty else ''}")
 
     def _show_save_status(self, text):
-        if hasattr(self, "_status_label") and self._status_label:
+        if self._status_label:
             self._status_label.configure(text=text)
-            self.root.after(2000, lambda: self._status_label.configure(text=""))
+            self.root.after(2000, lambda: self._status_label.configure(text="") if self._status_label.winfo_exists() else None)
 
     def _draw_header(self, parent):
         wrapper = ttk.Frame(parent)
 
-        back_button = ttk.Label(wrapper, image=self.images.get("left-chevron"))
-        back_button.grid(row=0, column=0, sticky=ttk.W, padx=(0, 10))
-        back_button.bind("<Button-1>", lambda e: self._go_back())
-        back_button.bind("<Enter>", lambda e: back_button.configure(foreground=Style.LIGHT_GREY.value))
-        back_button.bind("<Leave>", lambda e: back_button.configure(foreground=""))
+        back = ttk.Label(wrapper, image=self.images.get("left-chevron"), cursor="hand2")
+        back.grid(row=0, column=0, sticky=ttk.W, padx=(0, 10))
+        back.bind("<Button-1>", lambda e: self._go_back())
 
         self._title_label = ttk.Label(wrapper, text=self.script, font=("Host Grotesk", 16, "bold"))
         self._title_label.grid(row=0, column=1, sticky=ttk.W)
 
-        self._status_label = ttk.Label(wrapper, text="", font=("Host Grotesk", 11))
-        self._status_label.configure(foreground="#4fee4c")
+        self._status_label = ttk.Label(wrapper, text="", font=("Host Grotesk", 11), foreground="#4fee4c")
         self._status_label.grid(row=0, column=2, sticky=ttk.W, padx=(10, 0))
 
-        toolbar = ttk.Frame(wrapper, style="dark.TFrame")
-
-        save_btn = self._make_tool_button(toolbar, "Save", self._save_script)
-        save_btn.grid(row=0, column=0, padx=(0, 5))
-
-        reload_btn = self._make_tool_button(toolbar, "Reload", self._reload_script)
-        reload_btn.grid(row=0, column=1, padx=(0, 5))
-
-        new_btn = self._make_tool_button(toolbar, "New", self._new_script)
-        new_btn.grid(row=0, column=2)
-
+        toolbar = ttk.Frame(wrapper)
+        for i, (label, cmd) in enumerate([("Save", self._save_script), ("Reload", self._reload_script), ("New", self._new_script)]):
+            btn = ttk.Label(toolbar, text=label, font=("Host Grotesk", 11), style="secondary.TLabel", cursor="hand2")
+            btn.configure(foreground=Style.LIGHT_GREY.value)
+            btn.bind("<Button-1>", lambda e, c=cmd: c())
+            btn.bind("<Enter>", lambda e, b=btn: b.configure(foreground="white"))
+            btn.bind("<Leave>", lambda e, b=btn: b.configure(foreground=Style.LIGHT_GREY.value))
+            btn.grid(row=0, column=i, padx=(0, 8) if i < 2 else 0)
         toolbar.grid(row=0, column=3, sticky=ttk.E, padx=(15, 0))
-
         wrapper.columnconfigure(2, weight=1)
-
         return wrapper
-
-    def _make_tool_button(self, parent, text, command):
-        btn = ttk.Label(
-            parent,
-            text=text,
-            font=("Host Grotesk", 11),
-            style="secondary.TLabel",
-            cursor="hand2"
-        )
-        btn.configure(foreground=Style.LIGHT_GREY.value)
-        btn.bind("<Button-1>", lambda e: command())
-        btn.bind("<Enter>", lambda e: btn.configure(foreground="white"))
-        btn.bind("<Leave>", lambda e: btn.configure(foreground=Style.LIGHT_GREY.value))
-        return btn
 
     def draw(self, parent):
         header = self._draw_header(parent)
         header.pack(fill=ttk.X, pady=(0, 10))
 
-        editor_wrapper = RoundedFrame(parent, radius=(15, 15, 15, 15), bootstyle="dark.TFrame")
-        editor_wrapper.pack(fill=ttk.BOTH, expand=True)
-
-        if HAS_CUPCAKE:
-            self.editor = Editor(
-                editor_wrapper.inner_frame,
-                language=Languages.PYTHON,
-                darkmode=True,
-                font=("JetBrainsMono NF Regular", 10 if sys.platform != "darwin" else 12),
-                path=self._script_path,
-                showpath=False
-            )
-            self.editor.pack(fill=ttk.BOTH, expand=True)
-            self.editor.content.configure(state="normal")
-            self._original_content = self.editor.content.get("1.0", "end-1c")
-            self.editor.content.bind("<<Modified>>", self._on_content_change)
-            self.editor.content.bind("<Key>", lambda e: self.root.after(50, self._on_content_change))
-            self.editor.content.focus_set()
-        else:
-            self._draw_fallback_editor(editor_wrapper.inner_frame)
-
-    def _draw_fallback_editor(self, parent):
         content = self._get_script_content()
+        bg = self.root.style.colors.get("dark")
+        fg = Style.LIGHT_GREY.value
+        font_size = 10 if sys.platform != "darwin" else 12
+        mono = ("JetBrainsMono NF", font_size)
 
-        self.text_widget = ttk.Text(
-            parent,
-            wrap="none",
-            font=("JetBrainsMono NF", 10 if sys.platform != "darwin" else 12),
-            undo=True,
-            autoseparators=True,
-            maxundo=-1,
+        gutter_bg = "#181820"
+        shared_opts = dict(
+            font=mono, bd=0, highlightthickness=0, wrap="none",
+            spacing1=0, spacing2=0, spacing3=0, padx=0, pady=0,
         )
-        self.text_widget.configure(
-            border=0,
-            background=self.root.style.colors.get("dark"),
-            foreground=Style.LIGHT_GREY.value,
-            insertbackground="white",
-            highlightcolor=self.root.style.colors.get("dark"),
-            highlightbackground=self.root.style.colors.get("dark"),
+
+        self.line_numbers = tkinter.Text(
+            parent, width=4, state="disabled", cursor="arrow",
+            bg=gutter_bg, fg="#4a4a5e",
+            selectbackground=gutter_bg, takefocus=False,
+            **shared_opts,
+        )
+        self.line_numbers.pack(side="left", fill="y", pady=5)
+        self.line_numbers.config(padx=8)
+
+        sep = ttk.Frame(parent, width=1)
+        sep.pack(side="left", fill="y", pady=5)
+
+        self.text_widget = tkinter.Text(
+            parent, undo=True, autoseparators=True, maxundo=-1,
+            bg=bg, fg=fg, insertbackground="white",
             selectbackground="#3d3d5c",
+            **shared_opts,
         )
+        self.text_widget.pack(side="left", fill="both", expand=True, padx=(0, 5), pady=5)
+        self.text_widget.config(padx=8)
 
-        v_scroll = ttk.Scrollbar(parent, orient="vertical", command=self.text_widget.yview)
-        h_scroll = ttk.Scrollbar(parent, orient="horizontal", command=self.text_widget.xview)
-        self.text_widget.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
-
-        self.text_widget.grid(row=0, column=0, sticky="nsew", padx=(5, 0), pady=5)
-        v_scroll.grid(row=0, column=1, sticky="ns")
-        h_scroll.grid(row=1, column=0, sticky="ew")
-
-        parent.grid_rowconfigure(0, weight=1)
-        parent.grid_columnconfigure(0, weight=1)
+        v_scroll = ttk.Scrollbar(parent, orient="vertical",
+            command=lambda *a: (self.text_widget.yview(*a), self.line_numbers.yview(*a)))
+        v_scroll.pack(side="right", fill="y", pady=5)
+        self.text_widget.config(yscrollcommand=lambda *a: (v_scroll.set(*a), self.line_numbers.yview_moveto(a[0])))
 
         self.text_widget.insert("1.0", content)
         self.text_widget.mark_set("insert", "1.0")
         self.text_widget.edit_reset()
         self.text_widget.edit_modified(False)
         self._original_content = content
+        self._refresh_line_numbers()
 
-        self.text_widget.bind("<<Modified>>", self._on_content_change)
-        self.text_widget.bind("<Key>", lambda e: self.root.after(50, self._on_content_change))
-
+        self.text_widget.bind("<<Modified>>", self._on_change)
+        self.text_widget.bind("<Key>", lambda e: self.root.after(50, self._on_change))
+        self.text_widget.bind("<MouseWheel>", lambda e: self.root.after(1, self._refresh_line_numbers))
         self.text_widget.bind("<Control-s>", lambda e: self._save_script())
         self.text_widget.bind("<Control-r>", lambda e: self._reload_script())
 
+        parent.bind("<Button-1>", lambda e: self.text_widget.focus_set())
         self.text_widget.focus_set()
